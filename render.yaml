@@ -1,0 +1,10 @@
+# Render Blueprint — lets you deploy with "New + Blueprint" pointing at this repo,
+# instead of clicking through every setting by hand.
+services:
+  - type: web
+    name: dreamscape
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/journal
