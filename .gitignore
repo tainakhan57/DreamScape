@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Generated at runtime — not source, don't commit
+backend/runs/
+
+# User-supplied ambient audio (large binary files, source them yourself)
+backend/assets/ambient/*.mp3
+
+# Local env files if you add any later
+.env
