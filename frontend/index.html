@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DreamScape — text-to-dream-film</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12101c;
+    --bg-soft:#1c1830;
+    --ink:#f2eefb;
+    --muted:#8b83a8;
+    --accent:#a78bfa;
+    --accent-warm:#f6c453;
+    --line: rgba(242,238,251,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+
+  /* Signature element: slow-drifting dream fog behind the hero */
+  .fog{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    background:
+      radial-gradient(38rem 30rem at 15% 20%, rgba(167,139,250,0.20), transparent 60%),
+      radial-gradient(34rem 28rem at 85% 15%, rgba(246,196,83,0.10), transparent 60%),
+      radial-gradient(40rem 34rem at 50% 90%, rgba(139,131,168,0.16), transparent 60%);
+    animation: drift 26s ease-in-out infinite alternate;
+  }
+  @keyframes drift{
+    0%{ transform: translate3d(0,0,0) scale(1); }
+    100%{ transform: translate3d(2%, -3%, 0) scale(1.06); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .fog{ animation: none; }
+  }
+
+  .wrap{
+    position:relative;
+    z-index:1;
+    max-width:56rem;
+    margin:0 auto;
+    padding:4.5rem 1.5rem 6rem;
+  }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.75rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--accent-warm);
+    margin-bottom:1rem;
+  }
+
+  h1{
+    font-family:'Fraunces', serif;
+    font-optical-sizing:auto;
+    font-weight:600;
+    font-size:clamp(2.2rem, 5vw, 3.4rem);
+    line-height:1.08;
+    margin:0 0 1rem;
+    max-width:22ch;
+  }
+  h1 em{
+    font-style:italic;
+    color:var(--accent);
+  }
+
+  .sub{
+    color:var(--muted);
+    font-size:1.05rem;
+    line-height:1.6;
+    max-width:42ch;
+    margin:0 0 2.5rem;
+  }
+
+  .journal-page{
+    background:var(--bg-soft);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:1.75rem;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.6);
+  }
+
+  textarea{
+    width:100%;
+    min-height:7rem;
+    resize:vertical;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--ink);
+    font-family:'Fraunces', serif;
+    font-size:1.15rem;
+    line-height:1.7;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent, transparent 1.68rem,
+      var(--line) 1.68rem, var(--line) calc(1.68rem + 1px)
+    );
+  }
+  textarea::placeholder{ color: var(--muted); opacity:0.8; }
+
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    margin-top:1.25rem;
+    padding-top:1.25rem;
+    border-top:1px solid var(--line);
+  }
+
+  label.narration{
+    display:flex;
+    align-items:center;
+    gap:0.5rem;
+    font-size:0.85rem;
+    color:var(--muted);
+  }
+
+  button{
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:0.95rem;
+    color:#1a1626;
+    background: var(--accent-warm);
+    border:none;
+    padding:0.85rem 1.5rem;
+    border-radius:999px;
+    cursor:pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  button:hover{ transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(246,196,83,0.5); }
+  button:disabled{ opacity:0.5; cursor:progress; transform:none; box-shadow:none; }
+  button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .status{
+    margin-top:1.5rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.85rem;
+    color:var(--accent);
+    min-height:1.2rem;
+  }
+  .status.error{ color:#f28b82; }
+
+  .result{
+    margin-top:2rem;
+    display:none;
+  }
+  .result.visible{ display:block; }
+  .result video{
+    width:100%;
+    border-radius:12px;
+    border:1px solid var(--line);
+    display:block;
+  }
+  .result .meta{
+    margin-top:0.75rem;
+    font-size:0.85rem;
+    color:var(--muted);
+    display:flex;
+    gap:0.75rem;
+    flex-wrap:wrap;
+  }
+  .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    border:1px solid var(--line);
+    padding:0.2rem 0.55rem;
+    border-radius:999px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+
+  h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:1.4rem;
+    margin:4rem 0 1rem;
+  }
+
+  .journal-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap:1rem;
+  }
+  .card{
+    background:var(--bg-soft);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:1rem;
+    text-decoration:none;
+    color:var(--ink);
+    display:block;
+    transition: border-color 0.15s ease;
+  }
+  .card:hover{ border-color: var(--accent); }
+  .card p{
+    font-family:'Fraunces', serif;
+    font-size:1rem;
+    margin:0 0 0.6rem;
+    line-height:1.4;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .card .card-meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.7rem;
+    color:var(--muted);
+  }
+  .empty{
+    color:var(--muted);
+    font-size:0.9rem;
+  }
+</style>
+</head>
+<body>
+<div class="fog"></div>
+
+<div class="wrap">
+  <div class="eyebrow">Text&nbsp;→&nbsp;dream&nbsp;film</div>
+  <h1>Dreams fade in <em>minutes</em>.<br>This keeps them.</h1>
+  <p class="sub">Type a dream, even just fragments. DreamScape turns it into a short generated film — images, ambient sound, and narration, stitched together before the memory disappears.</p>
+
+  <div class="journal-page">
+    <textarea id="dreamInput" placeholder="I was falling through clouds, there was a red door, my teeth were falling out..."></textarea>
+    <div class="row">
+      <label class="narration">
+        <input type="checkbox" id="narrationToggle" checked>
+        Narrate it
+      </label>
+      <button id="generateBtn">Visualize this dream</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="result" id="result">
+    <video id="resultVideo" controls></video>
+    <div class="meta" id="resultMeta"></div>
+  </div>
+
+  <h2>Dream journal</h2>
+  <div class="journal-grid" id="journalGrid">
+    <p class="empty">No dreams visualized yet — the first one you generate shows up here.</p>
+  </div>
+</div>
+
+<script>
+// If the frontend is hosted separately from the backend (e.g. this page on Vercel,
+// backend on Render), set this to your backend's full URL, e.g.:
+//   const API_BASE = "https://dreamscape-xxxx.onrender.com";
+// Leave it empty ("") if frontend and backend are served together from the same host.
+const API_BASE = "";
+
+const dreamInput = document.getElementById('dreamInput');
+const narrationToggle = document.getElementById('narrationToggle');
+const generateBtn = document.getElementById('generateBtn');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+const resultVideo = document.getElementById('resultVideo');
+const resultMeta = document.getElementById('resultMeta');
+const journalGrid = document.getElementById('journalGrid');
+
+const LOADING_MESSAGES = [
+  'Reading the fragments...',
+  'Breaking the dream into scenes...',
+  'Painting each scene...',
+  'Choosing the mood for each moment...',
+  'Recording the narration...',
+  'Stitching the film together...'
+];
+
+let loadingInterval = null;
+
+function startLoadingMessages(){
+  let i = 0;
+  statusEl.classList.remove('error');
+  statusEl.textContent = LOADING_MESSAGES[0];
+  loadingInterval = setInterval(() => {
+    i = (i + 1) % LOADING_MESSAGES.length;
+    statusEl.textContent = LOADING_MESSAGES[i];
+  }, 4000);
+}
+
+function stopLoadingMessages(finalText, isError = false){
+  clearInterval(loadingInterval);
+  statusEl.classList.toggle('error', isError);
+  statusEl.textContent = finalText;
+}
+
+async function generateDream(){
+  const dreamText = dreamInput.value.trim();
+  if(!dreamText){
+    statusEl.classList.add('error');
+    statusEl.textContent = 'Write a dream first, even a fragment is enough.';
+    return;
+  }
+
+  generateBtn.disabled = true;
+  resultEl.classList.remove('visible');
+  startLoadingMessages();
+
+  try{
+    const res = await fetch(`${API_BASE}/api/generate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        dream_text: dreamText,
+        narration_enabled: narrationToggle.checked
+      })
+    });
+
+    if(!res.ok){
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Request failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    stopLoadingMessages('Your dream film is ready.');
+    showResult(data);
+    loadJournal();
+  }catch(err){
+    stopLoadingMessages(err.message || 'Something went wrong generating this dream.', true);
+  }finally{
+    generateBtn.disabled = false;
+  }
+}
+
+function showResult(data){
+  resultVideo.src = API_BASE + data.video_url;
+  resultMeta.innerHTML = `
+    <span class="tag">${data.scene_count} scenes</span>
+    ${data.moods.map(m => `<span class="tag">${m}</span>`).join('')}
+  `;
+  resultEl.classList.add('visible');
+}
+
+async function loadJournal(){
+  try{
+    const res = await fetch(`${API_BASE}/api/journal`);
+    const entries = await res.json();
+
+    if(!entries.length){
+      journalGrid.innerHTML = '<p class="empty">No dreams visualized yet — the first one you generate shows up here.</p>';
+      return;
+    }
+
+    journalGrid.innerHTML = entries.map(e => {
+      const date = new Date(e.created_at);
+      const when = date.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+      return `
+        <a class="card" href="${API_BASE + e.video_url}" target="_blank" rel="noopener">
+          <p>${e.dream_text}</p>
+          <div class="card-meta">${when} · ${e.scene_count} scenes</div>
+        </a>
+      `;
+    }).join('');
+  }catch(err){
+    // journal is a nice-to-have, fail quietly if the backend isn't reachable yet
+  }
+}
+
+generateBtn.addEventListener('click', generateDream);
+dreamInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generateDream();
+});
+
+loadJournal();
+</script>
+</body>
+</html>
